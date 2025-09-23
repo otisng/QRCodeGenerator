@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        .qr-container {
+            transition: all 0.3s ease;
+        }
+        .qr-container:hover {
+            transform: scale(1.05);
+        }
+        .used {
+            filter: grayscale(100%);
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-12">
+        <div class="max-w-4xl mx-auto text-center mb-12" data-aos="fade-down">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-4">QR Code Generator</h1>
+            <p class="text-lg text-gray-600">Upload your Excel file to generate QR codes and track their usage</p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8" data-aos="fade-up">
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="w-full md:w-1/2">
+                    <label class="block text-gray-700 font-medium mb-2">Upload Excel File</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+                        <input type="file" id="excelFile" accept=".xlsx, .xls" class="hidden">
+                        <div class="flex flex-col items-center justify-center py-8">
+                            <i data-feather="upload" class="w-12 h-12 text-indigo-500 mb-4"></i>
+                            <p class="text-gray-500 mb-2">Drag & drop your Excel file here</p>
+                            <p class="text-sm text-gray-400 mb-4">or</p>
+                            <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                                Browse Files
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-gray-700 font-medium mb-2">Select Data Column</label>
+                        <select id="columnSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled>
+                            <option value="">Please upload a file first</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <label class="block text-gray-700 font-medium mb-2">Settings</label>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-600 mb-1">QR Code Size</label>
+                            <input type="range" id="sizeRange" min="100" max="300" value="150" disabled class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed">
+                            <div class="flex justify-between text-sm text-gray-500">
+                                <span>Small</span>
+                                <span>Medium</span>
+                                <span>Large</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 mb-1">Error Correction</label>
+                            <select id="errorCorrection" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="L">Low (7%)</option>
+                                <option value="M" selected>Medium (15%)</option>
+                                <option value="Q">Quartile (25%)</option>
+                                <option value="H">High (30%)</option>
+                            </select>
+                        </div>
+                        <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2" disabled>
+                            <i data-feather="zap"></i>
+                            Generate QR Codes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="qrResults" class="hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4" data-aos="fade-up">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Generated QR Codes</h2>
+                    <div id="qrStats" class="text-sm text-gray-500 mt-1">
+                        <span id="totalQRCodes">0</span> QR codes generated • 
+                        <span id="usedQRCodes">0</span> used
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="exportAllBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <i data-feather="download"></i>
+                        Export All
+                    </button>
+                    <button id="checkUsageBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <i data-feather="check-circle"></i>
+                        Check Usage
+                    </button>
+                </div>
+            </div>
+
+            <div id="qrGrid" class="flex justify-center">
+                <!-- QR codes will be generated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init();
+            feather.replace();
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const excelFileInput = document.getElementById('excelFile');
+            const columnSelect = document.getElementById('columnSelect');
+            const generateBtn = document.getElementById('generateBtn');
+            const qrResults = document.getElementById('qrResults');
+            const qrGrid = document.getElementById('qrGrid');
+            const sizeRange = document.getElementById('sizeRange');
+            const errorCorrection = document.getElementById('errorCorrection');
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const checkUsageBtn = document.getElementById('checkUsageBtn');
+
+            let excelData = [];
+            let qrCodes = [];
+            let usedQRCodes = new Set();
+            let qrValues = [];
+            let currentQRIndex = 0;
+
+            // Hide unused bulk action buttons for single-QR flow
+            exportAllBtn.classList.add('hidden');
+            checkUsageBtn.classList.add('hidden');
+
+            // Mock function to simulate checking if QR code has been used
+            function checkIfQRUsed(code) {
+                // In a real app, this would be an API call to your backend
+                return usedQRCodes.has(code);
+            }
+
+            // Handle file upload
+            uploadBtn.addEventListener('click', () => excelFileInput.click());
+            
+            excelFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    excelData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    // Populate column select
+                    columnSelect.innerHTML = '';
+                    if (excelData.length > 0) {
+                        excelData[0].forEach((header, index) => {
+                            const option = document.createElement('option');
+                            option.value = index;
+                            option.textContent = header || `Column ${index + 1}`;
+                            columnSelect.appendChild(option);
+                        });
+                        columnSelect.disabled = false;
+                        generateBtn.disabled = false;
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            function updateQRStats() {
+                const totalSpan = document.getElementById('totalQRCodes');
+                const usedSpan = document.getElementById('usedQRCodes');
+                totalSpan.textContent = qrValues.length.toString();
+                usedSpan.textContent = usedQRCodes.size.toString();
+            }
+
+            function renderCurrentQR() {
+                qrGrid.innerHTML = '';
+
+                // If all used or no values
+                if (!qrValues.length || usedQRCodes.size >= qrValues.length) {
+                    const doneDiv = document.createElement('div');
+                    doneDiv.className = 'bg-white p-6 rounded-lg shadow-md text-center';
+                    doneDiv.innerHTML = '<p class="text-gray-700">Tất cả QR code đã được sử dụng.</p>';
+                    qrGrid.appendChild(doneDiv);
+                    updateQRStats();
+                    return;
+                }
+
+                // Ensure we are on an unused QR index
+                let safety = 0;
+                while (usedQRCodes.has(qrValues[currentQRIndex]) && safety < qrValues.length) {
+                    currentQRIndex = (currentQRIndex + 1) % qrValues.length;
+                    safety++;
+                }
+
+                const value = qrValues[currentQRIndex];
+
+                const qr = qrcode(0, errorCorrection.value);
+                qr.addData(value.toString());
+                qr.make();
+
+                const size = 150;
+                const qrSvg = qr.createSvgTag({
+                    cellSize: size / qr.getModuleCount(),
+                    margin: 0,
+                    scalable: true
+                });
+
+                const qrWrapper = document.createElement('div');
+                qrWrapper.className = 'qr-container bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center';
+                qrWrapper.innerHTML = `
+                    <div class="qr-code mb-3" style="width:${size}px;height:${size}px">${qrSvg}</div>
+                    <p class="text-sm font-medium text-gray-700 mb-2 text-center">${value}</p>
+                    <span class="inline-block px-2 py-1 text-xs rounded-full ${usedQRCodes.has(value) ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} mb-4">${usedQRCodes.has(value) ? 'Used' : 'Unused'}</span>
+                    <button id="markUsedBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium">Đánh dấu đã sử dụng & tiếp theo</button>
+                `;
+                qrGrid.appendChild(qrWrapper);
+
+                const markBtn = document.getElementById('markUsedBtn');
+                markBtn.addEventListener('click', function() {
+                    usedQRCodes.add(value);
+                    currentQRIndex = (currentQRIndex + 1) % qrValues.length;
+                    updateQRStats();
+                    renderCurrentQR();
+                });
+
+                updateQRStats();
+                feather.replace();
+            }
+
+            // Generate a single centered QR code (150x150)
+            generateBtn.addEventListener('click', function() {
+                const columnIndex = columnSelect.value;
+                if (columnIndex === '' || !excelData.length) return;
+
+                qrGrid.innerHTML = '';
+                qrCodes = [];
+                usedQRCodes = new Set();
+                qrValues = [];
+                currentQRIndex = 0;
+
+                // Skip header row if exists
+                const startRow = excelData.length > 1 && excelData[0].some(cell => typeof cell === 'string') ? 1 : 0;
+
+                // Collect all non-empty values in the selected column
+                for (let i = startRow; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    const value = row[columnIndex];
+                    if (value !== undefined && value !== null && value !== '') {
+                        qrValues.push(value);
+                    }
+                }
+
+                if (!qrValues.length) return;
+
+                qrResults.classList.remove('hidden');
+                renderCurrentQR();
+            });
+
+            // Check usage for all QR codes
+            checkUsageBtn.addEventListener('click', function() {
+                const checkButtons = document.querySelectorAll('.check-btn');
+                checkButtons.forEach(btn => btn.click());
+            });
+
+            // Export all QR codes as ZIP (simplified for demo)
+            exportAllBtn.addEventListener('click', function() {
+                alert('In a real application, this would download all QR codes as a ZIP file.');
+            });
+
+            // Event delegation for dynamic buttons
+            qrGrid.addEventListener('click', function(e) {
+                const target = e.target.closest('.download-btn');
+                if (target) {
+                    const index = target.getAttribute('data-index');
+                    const qr = qrCodes[index];
+                    
+                    // Create download link
+                    const blob = new Blob([qr.svg], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `qr_${qr.value}.svg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+
+                const checkTarget = e.target.closest('.check-btn');
+                if (checkTarget) {
+                    const index = checkTarget.getAttribute('data-index');
+                    const qrCard = checkTarget.closest('.qr-container');
+                    const qr = qrCodes[index];
+                    
+                    // Simulate API call with loading state
+                    checkTarget.innerHTML = '<i data-feather="loader" class="w-4 h-4 animate-spin"></i>';
+                    feather.replace();
+                    
+                    setTimeout(() => {
+                        const isUsed = checkIfQRUsed(qr.value);
+                        qr.used = isUsed;
+                        
+                        // Update UI
+                        if (isUsed) {
+                            qrCard.classList.add('used');
+                            qrCard.querySelector('span').className = 'inline-block px-2 py-1 text-xs rounded-full bg-red-100 text-red-800';
+                            qrCard.querySelector('span').textContent = 'Used';
+                        } else {
+                            qrCard.classList.remove('used');
+                            qrCard.querySelector('span').className = 'inline-block px-2 py-1 text-xs rounded-full bg-green-100 text-green-800';
+                            qrCard.querySelector('span').textContent = 'Unused';
+                        }
+                        
+                        checkTarget.innerHTML = '<i data-feather="refresh-cw" class="w-4 h-4"></i>';
+                        updateQRStats();
+                        feather.replace();
+                    }, 800);
+                }
+            });
+
+            // Remove demo auto-used behavior in single-QR flow
+        });
+    </script>
+</body>
+</html>
