@@ -1,0 +1,12 @@
+.qr-container {
+    transition: all 0.3s ease;
+}
+
+.qr-container:hover {
+    transform: scale(1.05);
+}
+
+.used {
+    filter: grayscale(100%);
+    opacity: 0.7;
+}
