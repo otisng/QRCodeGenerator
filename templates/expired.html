@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liên kết đã hết hạn - QR Code Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(3deg); }
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-950 min-h-screen flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+
+    <!-- Decorative background elements -->
+    <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[120px] opacity-20 animate-pulse"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-rose-600 rounded-full mix-blend-multiply filter blur-[120px] opacity-20 animate-pulse" style="animation-delay: 2s;"></div>
+
+    <main class="w-full max-w-md glass rounded-3xl shadow-2xl p-8 text-center relative overflow-hidden transition-all duration-300 hover:shadow-rose-950/20 hover:border-rose-500/20" data-aos="fade-up">
+        
+        <!-- Red/Orange glowing accent at the top -->
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-500 via-amber-500 to-rose-500"></div>
+
+        <!-- Expired / Lock Icon Container -->
+        <div class="mb-8 relative flex justify-center">
+            <div class="w-24 h-24 rounded-2xl bg-rose-50/80 flex items-center justify-center animate-float relative shadow-inner border border-rose-100">
+                <!-- Lock with timer overlay -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-rose-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                
+                <!-- Small Clock Icon -->
+                <span class="absolute bottom-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow text-white border border-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                </span>
+            </div>
+        </div>
+
+        {% if reason == 'expired' %}
+            <h1 class="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Liên kết đã hết hạn</h1>
+            <p class="text-slate-600 mb-8 leading-relaxed">
+                Mã QR Code này được tạo với cấu hình giới hạn thời gian và <span class="font-semibold text-rose-600">đã hết hiệu lực (60 giây)</span>. Vui lòng yêu cầu người gửi tạo mã mới.
+            </p>
+        {% else %}
+            <h1 class="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Liên kết không hợp lệ</h1>
+            <p class="text-slate-600 mb-8 leading-relaxed">
+                Chữ ký bảo mật của liên kết này không chính xác hoặc đã bị sửa đổi. Vui lòng kiểm tra lại đường dẫn.
+            </p>
+        {% endif %}
+
+        <!-- Navigation Buttons -->
+        <div class="space-y-3">
+            <a href="/qrcode_time_limited" class="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-indigo-900 hover:to-indigo-950 text-white rounded-2xl font-medium shadow-lg hover:shadow-indigo-900/20 transition-all duration-200 active:scale-[0.98]">
+                <span>Tạo mã QR mới</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+            </a>
+            
+            <p class="text-xs text-slate-400 mt-6">
+                Hệ thống tự động bảo mật liên kết &copy; 2026 QR Code Generator
+            </p>
+        </div>
+
+    </main>
+
+</body>
+</html>

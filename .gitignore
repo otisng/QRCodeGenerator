@@ -1,0 +1,45 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# --- Django ---
+local_settings.py
+db.sqlite3
+db.sqlite4
+/static/
+/staticfiles/
+/media/
+# Nếu bạn lưu trữ file log
+*.log
+
+# --- Database & Environment (Quan trọng nhất) ---
+.env
+.flaskenv
+*.sql
+*.dump
+
+# --- IDE (Cursor, VS Code) ---
+.vscode/
+.cursor/
+.idea/
+*.swp
+*.swo
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- Frontend (Nếu game có sử dụng Node.js/React) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time-limited QR Code Generator</title>
+    <meta name="description" content="Generate QR codes that expire after 1 hour">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .countdown {
+            font-weight: 600;
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow-sm py-6">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl font-bold text-center text-gray-800">QR Code Generator</h1>
+            <p class="text-center text-gray-600 mt-2">Create time-limited QR codes (valid for 1 hour)</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-12 max-w-3xl">
+        <div class="bg-white rounded-xl shadow-md p-8">
+            <div class="mb-8">
+                <label for="urlInput" class="block text-gray-700 font-medium mb-2">Enter URL:</label>
+                <div class="flex">
+                    <input type="url" id="urlInput" placeholder="https://example.com"
+                        class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                        required>
+                    <button type="button" id="generateBtn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-r-lg font-medium transition-colors">
+                        Generate
+                    </button>
+                </div>
+            </div>
+
+            <div id="qrResult" class="hidden">
+                <div class="flex flex-col md:flex-row gap-8 items-center md:items-start">
+                    <div class="flex flex-col items-center">
+                        <div id="qrCode" class="bg-white p-4 rounded-lg border border-gray-200 mb-4"></div>
+                        <div class="flex gap-4">
+                            <button id="downloadBtn"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-download mr-2"></i>Download
+                            </button>
+                            <button id="shareBtn"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-share-alt mr-2"></i>Share
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="bg-blue-50 rounded-lg p-4 mb-4">
+                            <p class="text-blue-800"><strong>Expiry:</strong> This QR code will expire in <span
+                                    id="expiryCountdown" class="countdown">60:00</span> minutes</p>
+                            <p class="text-blue-800 mt-2"><strong>Link:</strong> <a id="generatedLink" target="_blank"
+                                    class="font-mono break-all underline hover:text-blue-600 cursor-pointer"></a></p>
+                        </div>
+                        <div id="statusMessage" class="hidden p-4 rounded-lg"></div>
+
+                        <div class="mt-6">
+                            <button id="newQrBtn" class="text-blue-600 hover:text-blue-800 font-medium">
+                                <i class="fas fa-plus mr-2"></i>Generate New QR Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="qrPlaceholder" class="text-center py-12 text-gray-500">
+                <i class="fas fa-qrcode text-6xl mb-4 opacity-30"></i>
+                <p>Enter a URL and click "Generate" to create your QR code</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 py-8 mt-12">
+        <div class="container mx-auto px-4 text-center text-gray-600">
+            <p>QR codes generated are valid for 1 hour only</p>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const urlInput = document.getElementById('urlInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const qrResult = document.getElementById('qrResult');
+        const qrPlaceholder = document.getElementById('qrPlaceholder');
+        const qrCode = document.getElementById('qrCode');
+        const expiryCountdown = document.getElementById('expiryCountdown');
+        const generatedLink = document.getElementById('generatedLink');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const newQrBtn = document.getElementById('newQrBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // State variables
+        let qrExpiryTime = null;
+        let countdownInterval = null;
+        const expiryTime = 60000;
+
+        // Initialize QR code generation
+        generateBtn.addEventListener('click', generateQRCode);
+        newQrBtn.addEventListener('click', resetGenerator);
+        downloadBtn.addEventListener('click', downloadQRCode);
+        shareBtn.addEventListener('click', shareQRCode);
+
+        // QR Code Generation
+        function generateQRCode() {
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showStatusMessage('Please enter a valid URL', 'error');
+                return;
+            }
+
+            // Clear previous timers
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            // Disable generate button while fetching
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
+
+            // Fetch temporary signed link from server
+            fetch(`/generate_temp_link/?url=${encodeURIComponent(url)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to generate secure temporary link');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const redirectUrl = data.redirect_url;
+
+                    // Clear previous content
+                    qrCode.innerHTML = '';
+                    qrCode.classList.remove('opacity-50');
+
+                    // Create a canvas element dynamically
+                    const canvas = document.createElement('canvas');
+
+                    // Generate QR code pointing to redirectUrl
+                    QRCode.toCanvas(canvas, redirectUrl, {
+                        width: 200,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#ffffff'
+                        }
+                    }, (error) => {
+                        generateBtn.disabled = false;
+                        generateBtn.textContent = 'Generate';
+
+                        if (error) {
+                            showStatusMessage('Error generating QR code', 'error');
+                            console.error(error);
+                            return;
+                        }
+
+                        // Append the generated canvas to the qrCode div
+                        qrCode.appendChild(canvas);
+
+                        // Update UI
+                        generatedLink.textContent = redirectUrl;
+                        generatedLink.setAttribute('href', redirectUrl);
+                        generatedLink.className = 'font-mono break-all underline hover:text-blue-600 cursor-pointer';
+
+                        qrPlaceholder.classList.add('hidden');
+                        qrResult.classList.remove('hidden');
+
+                        // Set expiry time (60 seconds from now)
+                        qrExpiryTime = Date.now() + expiryTime;
+                        updateCountdownTimer();
+
+                        // Start countdown
+                        countdownInterval = setInterval(updateCountdownTimer, 1000);
+                        showStatusMessage('QR code generated successfully!', 'success');
+                    });
+                })
+                .catch(err => {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate';
+                    showStatusMessage('Error: ' + err.message, 'error');
+                    console.error(err);
+                });
+        }
+
+        // Countdown timer
+        function updateCountdownTimer() {
+            const remainingTime = qrExpiryTime - Date.now();
+
+            if (remainingTime <= 0) {
+                clearInterval(countdownInterval);
+                expiryCountdown.textContent = 'EXPIRED';
+                qrCode.classList.add('opacity-50');
+
+                // Disable the link visually and functionally
+                generatedLink.removeAttribute('href');
+                generatedLink.className = 'font-mono break-all text-gray-400 line-through cursor-not-allowed';
+
+                showStatusMessage('This QR code and link have expired', 'error');
+                return;
+            }
+
+            const minutes = Math.floor(remainingTime / expiryTime);
+            const seconds = Math.floor((remainingTime % expiryTime) / 1000);
+            expiryCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Download QR code
+        function downloadQRCode() {
+            if (qrExpiryTime && Date.now() >= qrExpiryTime) {
+                showStatusMessage('This QR code has expired and cannot be downloaded', 'error');
+                return;
+            }
+            const canvas = qrCode.querySelector('canvas');
+            if (!canvas) return;
+            const link = document.createElement('a');
+            link.download = 'qr-code.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showStatusMessage('QR code downloaded', 'success');
+        }
+
+        // Share QR code
+        function shareQRCode() {
+            if (qrExpiryTime && Date.now() >= qrExpiryTime) {
+                showStatusMessage('This QR code has expired and cannot be shared', 'error');
+                return;
+            }
+            const canvas = qrCode.querySelector('canvas');
+            if (!canvas) return;
+            canvas.toBlob((blob) => {
+                const file = new File([blob], 'qr-code.png', { type: 'image/png' });
+
+                if (navigator.share && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Time-limited QR Code',
+                        text: `Scan this QR code before it expires (${expiryCountdown.textContent} remaining)`
+                    }).catch(() => {
+                        showStatusMessage('Share cancelled', 'neutral');
+                    });
+                } else {
+                    downloadQRCode();
+                }
+            });
+        }
+
+        // Reset generator
+        function resetGenerator() {
+            qrResult.classList.add('hidden');
+            qrPlaceholder.classList.remove('hidden');
+            urlInput.value = '';
+            urlInput.focus();
+
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+
+            qrCode.innerHTML = '';
+            qrCode.classList.remove('opacity-50');
+
+            // Reset link
+            generatedLink.removeAttribute('href');
+            generatedLink.textContent = '';
+            generatedLink.className = 'font-mono break-all underline hover:text-blue-600 cursor-pointer';
+
+            statusMessage.classList.add('hidden');
+        }
+
+        // Status messages
+        function showStatusMessage(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'bg-green-50', 'text-green-800', 'bg-blue-50', 'text-blue-800');
+
+            switch (type) {
+                case 'error':
+                    statusMessage.classList.add('bg-red-50', 'text-red-800');
+                    break;
+                case 'success':
+                    statusMessage.classList.add('bg-green-50', 'text-green-800');
+                    break;
+                default:
+                    statusMessage.classList.add('bg-blue-50', 'text-blue-800');
+            }
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>
