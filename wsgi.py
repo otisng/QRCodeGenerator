@@ -14,3 +14,6 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QRCodeGenerator.settings')
 
 application = get_wsgi_application()
+
+# Thêm dòng này để Vercel hiểu biến app
+app = application
